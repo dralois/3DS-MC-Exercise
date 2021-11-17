@@ -46,4 +46,4 @@ CTestTestfile.cmake
 **/[Ll]ib/**
 **/[Ll]ibs/**
 **/[Bb]uild/**
-**/[Dd]ata/**
+Exercise-1/data/**
