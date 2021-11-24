@@ -41,12 +41,10 @@ if(WIN32)
     get_target_property(GLOG_DLL_PATH_RELEASE glog::glog IMPORTED_LOCATION_RELEASE)
     
     add_custom_command(TARGET gaussian POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${GLOG_DLL_PATH_DEBUG}"
-            ${CMAKE_BINARY_DIR})
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GLOG_DLL_PATH_DEBUG}" "${CMAKE_BINARY_DIR}"
+            VERBATIM)
     
     add_custom_command(TARGET gaussian POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${GLOG_DLL_PATH_RELEASE}"
-            ${CMAKE_BINARY_DIR})
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GLOG_DLL_PATH_RELEASE}" "${CMAKE_BINARY_DIR}"
+            VERBATIM)
 endif(WIN32)

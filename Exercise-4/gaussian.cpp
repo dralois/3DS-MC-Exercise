@@ -16,7 +16,11 @@ struct GaussianCostFunction
 	bool operator()(const T* const mu, const T* const sigma, T* residual) const
 	{
 		// TODO: Implement the cost function
-		residual[0] = T(0.0);
+		const T m = *mu;
+		const T ssq = T(pow(*sigma, T(2.0)));
+		const T fractpart = T(1.0) / T(sqrt(T(2.0) * T(M_PI) * ssq));
+		const T exppart = T(exp(T(-1.0) * (T(pow(T(point.x) - m, T(2.0))) / (T(2.0) * ssq))));
+		residual[0] = T(point.y) - (fractpart * exppart);
 		return true;
 	}
 
@@ -30,7 +34,7 @@ int main(int argc, char** argv)
 	google::InitGoogleLogging(argv[0]);
 
 	// Read data points
-	const std::string file_path = "../../Data/points_gaussian.txt";
+	const std::string file_path = "../Data/points_gaussian.txt";
 	const auto points = read_points_from_file<Point2D>(file_path);
 
 	// Good initial values make the optimization easier
@@ -48,7 +52,7 @@ int main(int argc, char** argv)
 		problem.AddResidualBlock(
 			new ceres::AutoDiffCostFunction<GaussianCostFunction, 1, 1, 1>(
 				new GaussianCostFunction(point)
-			),
+				),
 			nullptr, &mu, &sigma
 		);
 	}

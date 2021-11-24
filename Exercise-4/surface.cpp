@@ -8,7 +8,25 @@
 // TODO: Implement the cost function (check gaussian.cpp for reference)
 struct SurfaceCostFunction
 {
+	SurfaceCostFunction(const Point3D& point) :
+		_point(point)
+	{
+	}
 
+	template<typename T>
+	bool operator()(const T* const a, const T* const b, const T* const c, T* residuals) const
+	{
+		const T& _a = *a;
+		const T& _b = *b;
+		const T& _c = *c;
+
+		residuals[0] = (_c * T(_point.z)) - ((T(pow(_point.x, 2.0)) / _a) - (T(pow(_point.y, 2.0)) / _b));
+
+		return true;
+	}
+
+private:
+	Point3D _point;
 };
 
 
@@ -17,7 +35,7 @@ int main(int argc, char** argv)
 	google::InitGoogleLogging(argv[0]);
 
 	// Read 3D surface data points and define the parameters of the problem
-	const std::string file_path = "../../Data/points_surface.txt";
+	const std::string file_path = "../Data/points_surface.txt";
 	const auto points = read_points_from_file<Point3D>(file_path);
 	
 	const double a_initial = 1.0;
@@ -31,6 +49,15 @@ int main(int argc, char** argv)
 	ceres::Problem problem;
 
 	// TODO: For each data point create one residual block (check gaussian.cpp for reference)
+
+	for(const Point3D& point : points)
+	{
+		problem.AddResidualBlock(
+			new ceres::AutoDiffCostFunction<SurfaceCostFunction, 1, 1, 1, 1>(new SurfaceCostFunction(point)),
+			nullptr,
+			&a, &b, &c
+		);
+	}
 
 	ceres::Solver::Options options;
 	options.max_num_iterations = 100;
