@@ -7,18 +7,18 @@
 #include "ICPOptimizer.h"
 #include "PointCloud.h"
 
-#define SHOW_BUNNY_CORRESPONDENCES 0
+#define SHOW_BUNNY_CORRESPONDENCES	0
 
 #define USE_POINT_TO_PLANE	0
-#define USE_LINEAR_ICP		0
+#define USE_LINEAR_ICP			0
 
-#define RUN_SHAPE_ICP		0
-#define RUN_SEQUENCE_ICP	1
+#define RUN_SHAPE_ICP			1
+#define RUN_SEQUENCE_ICP	0
 
 void debugCorrespondenceMatching() {
 	// Load the source and target mesh.
-	const std::string filenameSource = std::string("../Data/bunny_part2_trans.off");
-	const std::string filenameTarget = std::string("../Data/bunny_part1.off");
+	const std::string filenameSource = std::string("../data/bunny_part2_trans.off");
+	const std::string filenameTarget = std::string("../data/bunny_part1.off");
 
 	SimpleMesh sourceMesh;
 	if (!sourceMesh.loadMesh(filenameSource)) {
@@ -34,7 +34,7 @@ void debugCorrespondenceMatching() {
 
 	PointCloud source{ sourceMesh };
 	PointCloud target{ targetMesh };
-	
+
 	// Search for matches using FLANN.
 	std::unique_ptr<NearestNeighborSearch> nearestNeighborSearch = std::make_unique<NearestNeighborSearchFlann>();
 	nearestNeighborSearch->setMatchingMaxDistance(0.0001f);
@@ -60,8 +60,8 @@ void debugCorrespondenceMatching() {
 
 int alignBunnyWithICP() {
 	// Load the source and target mesh.
-	const std::string filenameSource = std::string("../Data/bunny_part2_trans.off");
-	const std::string filenameTarget = std::string("../Data/bunny_part1.off");
+	const std::string filenameSource = std::string("../data/bunny_part2_trans.off");
+	const std::string filenameTarget = std::string("../data/bunny_part1.off");
 
 	SimpleMesh sourceMesh;
 	if (!sourceMesh.loadMesh(filenameSource)) {
@@ -83,7 +83,7 @@ int alignBunnyWithICP() {
 	else {
 		optimizer = new CeresICPOptimizer();
 	}
-	
+
 	optimizer->setMatchingMaxDistance(0.0003f);
 	if (USE_POINT_TO_PLANE) {
 		optimizer->usePointToPlaneConstraints(true);
@@ -97,9 +97,9 @@ int alignBunnyWithICP() {
 	PointCloud source{ sourceMesh };
 	PointCloud target{ targetMesh };
 
-    Matrix4f estimatedPose = Matrix4f::Identity();
+	Matrix4f estimatedPose = Matrix4f::Identity();
 	optimizer->estimatePose(source, target, estimatedPose);
-	
+
 	// Visualize the resulting joined mesh. We add triangulated spheres for point matches.
 	SimpleMesh resultingMesh = SimpleMesh::joinMeshes(sourceMesh, targetMesh, estimatedPose);
 	if (SHOW_BUNNY_CORRESPONDENCES) {
@@ -119,7 +119,7 @@ int alignBunnyWithICP() {
 }
 
 int reconstructRoom() {
-	std::string filenameIn = std::string("../Exercise-1/Data/");
+	std::string filenameIn = std::string("../Exercise-1/data/");
 	std::string filenameBaseOut = std::string("mesh_");
 
 	// Load video
@@ -133,7 +133,7 @@ int reconstructRoom() {
 	// We store a first frame as a reference frame. All next frames are tracked relatively to the first frame.
 	sensor.processNextFrame();
 	PointCloud target{ sensor.getDepth(), sensor.getDepthIntrinsics(), sensor.getDepthExtrinsics(), sensor.getDepthImageWidth(), sensor.getDepthImageHeight() };
-	
+
 	// Setup the optimizer.
 	ICPOptimizer* optimizer = nullptr;
 	if (USE_LINEAR_ICP) {
@@ -169,7 +169,7 @@ int reconstructRoom() {
 		// We downsample the source image to speed up the correspondence matching.
 		PointCloud source{ sensor.getDepth(), sensor.getDepthIntrinsics(), sensor.getDepthExtrinsics(), sensor.getDepthImageWidth(), sensor.getDepthImageHeight(), 8 };
 		optimizer->estimatePose(source, target, currentCameraToWorld);
-		
+
 		// Invert the transformation matrix to get the current camera pose.
 		Matrix4f currentCameraPose = currentCameraToWorld.inverse();
 		std::cout << "Current camera pose: " << std::endl << currentCameraPose << std::endl;
@@ -189,7 +189,7 @@ int reconstructRoom() {
 				return -1;
 			}
 		}
-		
+
 		i++;
 	}
 
