@@ -81,8 +81,8 @@ public:
 					continue;
 				}
 
-				// TODO: Compute the normals using central differences. 
-				normalsTmp[idx] = Vector3f(1, 1, 1); // Needs to be replaced.
+				// TODO: Compute the normals using central differences.
+				normalsTmp[idx] = Vector3f(-du, -dv, 1.0f); // Needs to be replaced.
 				normalsTmp[idx].normalize();
 			}
 		}

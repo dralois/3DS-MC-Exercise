@@ -10,7 +10,7 @@
 #define SHOW_BUNNY_CORRESPONDENCES	0
 
 #define USE_POINT_TO_PLANE	1
-#define USE_LINEAR_ICP			0
+#define USE_LINEAR_ICP			1
 
 #define RUN_SHAPE_ICP			0
 #define RUN_SEQUENCE_ICP	1

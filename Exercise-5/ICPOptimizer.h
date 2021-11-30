@@ -111,9 +111,17 @@ public:
 		// class.
 		// Important: Ceres automatically squares the cost function.
 
-		residuals[0] = T(0);
-		residuals[1] = T(0);
-		residuals[2] = T(0);
+		PoseIncrement<T> poseIncrementor = PoseIncrement<T>(const_cast<T*>(pose));
+
+		T sourceOut[3], sourceIn[3], target[3];
+		fillVector<T>(m_sourcePoint, sourceIn);
+		fillVector<T>(m_targetPoint, target);
+
+		poseIncrementor.apply(sourceIn, sourceOut);
+
+		residuals[0] = T(m_weight) * T(LAMBDA) * (sourceOut[0] - target[0]);
+		residuals[1] = T(m_weight) * T(LAMBDA) * (sourceOut[1] - target[1]);
+		residuals[2] = T(m_weight) * T(LAMBDA) * (sourceOut[2] - target[2]);
 
 		return true;
 	}
@@ -148,7 +156,19 @@ public:
 		// class.
 		// Important: Ceres automatically squares the cost function.
 
-		residuals[0] = T(0);
+		PoseIncrement<T> poseIncrementor = PoseIncrement<T>(const_cast<T*>(pose));
+
+		T sourceOut[3], sourceIn[3], target[3], normal[3];
+		fillVector<T>(m_sourcePoint, sourceIn);
+		fillVector<T>(m_targetPoint, target);
+		fillVector<T>(m_targetNormal, normal);
+
+		poseIncrementor.apply(sourceIn, sourceOut);
+
+		residuals[0] = T(m_weight) * T(LAMBDA) *
+			((normal[0] * (sourceOut[0] - target[0])) +
+			(normal[1] * (sourceOut[1] - target[1])) +
+			(normal[2] * (sourceOut[2] - target[2])));
 
 		return true;
 	}
@@ -236,6 +256,9 @@ protected:
 
 				// TODO: Invalidate the match (set it to -1) if the angle between the normals is greater than 60
 
+				if (fabsf(sourceNormal.dot(targetNormal)) < 0.5f)
+					match.idx = -1;
+
 			}
 		}
 	}
@@ -312,7 +335,7 @@ private:
 		options.linear_solver_type = ceres::DENSE_QR;
 		options.minimizer_progress_to_stdout = 1;
 		options.max_num_iterations = 1;
-		options.num_threads = 8;
+		options.num_threads = 4;
 	}
 
 	void prepareConstraints(const std::vector<Vector3f>& sourcePoints, const std::vector<Vector3f>& targetPoints, const std::vector<Vector3f>& targetNormals, const std::vector<Match> matches, const PoseIncrement<double>& poseIncrement, ceres::Problem& problem) const {
@@ -330,6 +353,11 @@ private:
 				// TODO: Create a new point-to-point cost function and add it as constraint (i.e. residual block) 
 				// to the Ceres problem.
 
+				problem.AddResidualBlock(
+					PointToPointConstraint::create(sourcePoint, targetPoint, match.weight),
+					nullptr,
+					poseIncrement.getData()
+				);
 
 				if (m_bUsePointToPlaneConstraints) {
 					const auto& targetNormal = targetNormals[match.idx];
@@ -340,6 +368,11 @@ private:
 					// TODO: Create a new point-to-plane cost function and add it as constraint (i.e. residual block) 
 					// to the Ceres problem.
 
+					problem.AddResidualBlock(
+						PointToPlaneConstraint::create(sourcePoint, targetPoint, targetNormal, match.weight),
+						nullptr,
+						poseIncrement.getData()
+					);
 
 				}
 			}
@@ -428,18 +461,45 @@ private:
 
 			// TODO: Add the point-to-plane constraints to the system
 
+			A.block<1, 3>(4 * i, 0) = s.cross(n);
+			A.block<1, 3>(4 * i, 3) = n;
+
+			b(4 * i) = n.dot(d) - n.dot(s);
 
 			// TODO: Add the point-to-point constraints to the system
 
+			A(4 * i + 1, 1) = s.z();
+			A(4 * i + 1, 2) = -s.y();
+			A(4 * i + 1, 3) = 1.0f;
+
+			A(4 * i + 2, 0) = -s.z();
+			A(4 * i + 2, 2) = s.x();
+			A(4 * i + 2, 4) = 1.0f;
+
+			A(4 * i + 3, 0) = s.y();
+			A(4 * i + 3, 1) = -s.x();
+			A(4 * i + 3, 5) = 1.0f;
+
+			b.block<3, 1>(4 * i + 1, 0) = d - s;
 
 			//TODO: Optionally, apply a higher weight to point-to-plane correspondences
 
+			const float point2point = 0.1f;
+			const float point2plane = 1.0f;
+
+			A(4 * i) *= point2plane;
+			b(4 * i) *= point2plane;
+
+			A.block<3, 6>(4 * i + 1, 0) *= point2point;
+			b.block<3, 1>(4 * i + 1, 0) *= point2point;
 
 		}
 
 		// TODO: Solve the system
 		VectorXf x(6);
 
+		auto decomposition = Eigen::JacobiSVD<MatrixXf>(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+		x = decomposition.solve(b);
 
 		float alpha = x(0), beta = x(1), gamma = x(2);
 
@@ -453,6 +513,8 @@ private:
 		// TODO: Build the pose matrix using the rotation and translation matrices
 		Matrix4f estimatedPose = Matrix4f::Identity();
 
+		estimatedPose.block<3, 3>(0, 0) = rotation;
+		estimatedPose.block<3, 1>(0, 3) = translation;
 
 		return estimatedPose;
 	}
